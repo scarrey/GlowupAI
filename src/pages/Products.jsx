@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Sparkles, AlertTriangle } from 'lucide-react';
 import PageTransition from '../components/shared/PageTransition';
 import AnimatedSection from '../components/shared/AnimatedSection';
 
@@ -141,6 +141,13 @@ export default function Products() {
     queryFn: () => api.get('/api/products'),
   });
 
+  // Feature 5: AI-powered personalized product recommendations
+  const { data: recData } = useQuery({
+    queryKey: ['productRecommendations'],
+    queryFn: () => api.get('/api/ai/product-recommendations'),
+  });
+  const recommendations = recData?.recommendations || [];
+
   const filtered = products.filter((p) => {
     const catMatch = selectedCategory === 'all' || p.category === selectedCategory;
     const skinMatch = selectedSkinType === 'all' || (p.skin_types || []).includes(selectedSkinType);
@@ -157,6 +164,45 @@ export default function Products() {
             {profile ? `Showing products matched to your ${profile.skin_type} skin type` : 'Discover products perfect for your skin'}
           </p>
         </AnimatedSection>
+
+        {recommendations.length > 0 && (
+          <AnimatedSection delay={0.05} className="mb-8">
+            <div style={{ ...cardStyle, padding: 24, background: 'linear-gradient(135deg, #F0F5F0 0%, #FAFAF7 100%)' }}>
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5" style={{ color: '#3D5A3E' }} />
+                <h2 className="font-cormorant font-semibold" style={{ fontSize: 22, color: '#1A1F1A' }}>Recommended For You</h2>
+                {recData?.source === 'ai' && (
+                  <span className="font-jost uppercase" style={{ fontSize: 9, background: '#3D5A3E', color: '#fff', padding: '2px 8px', borderRadius: 2, letterSpacing: '0.1em' }}>AI picked</span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {recommendations.map((product) => (
+                  <div key={product.id} style={{ background: '#fff', border: '1px solid #E2E8E2', borderRadius: 3, padding: 16, cursor: 'pointer' }} onClick={() => setModalProduct(product)}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-jost font-medium uppercase" style={{ fontSize: 9, background: '#E8EFE8', color: '#3D5A3E', padding: '2px 8px', borderRadius: 2 }}>
+                        {product.category?.replace('_', ' ')}
+                      </span>
+                      {product.conflicts?.length > 0 && (
+                        <span title={product.conflicts[0].reason}>
+                          <AlertTriangle className="w-4 h-4" style={{ color: '#C97A40' }} />
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-jost font-semibold text-sm mb-1" style={{ color: '#1A1F1A' }}>{product.name}</h3>
+                    {product.reason && (
+                      <p className="font-jost" style={{ fontSize: 11, color: '#5C6B5C', lineHeight: 1.5, fontStyle: 'italic' }}>{product.reason}</p>
+                    )}
+                    {product.conflicts?.length > 0 && (
+                      <p className="font-jost" style={{ fontSize: 10, color: '#C97A40', marginTop: 6 }}>
+                        ⚠ Conflicts with your routine: {product.conflicts[0].labels.join(' + ')}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </AnimatedSection>
+        )}
 
         <AnimatedSection delay={0.1} className="mb-8 space-y-3">
           <div>

@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import PageTransition from '../components/shared/PageTransition';
 import AnimatedSection from '../components/shared/AnimatedSection';
-import { Check, Sun, Moon } from 'lucide-react';
+import { Check, Sun, Moon, AlertTriangle } from 'lucide-react';
 
 export default function Routine() {
   const queryClient = useQueryClient();
@@ -31,6 +31,14 @@ export default function Routine() {
 
   const checklist = checklistData?.id ? checklistData : null;
   const completedSteps = checklist?.completed_steps || [];
+
+  // Ingredient conflict detection (Feature 6) — re-checks whenever routines change.
+  const { data: conflictData } = useQuery({
+    queryKey: ['routineConflicts', user?.email, routines.map((r) => r.id).join(',')],
+    queryFn: () => api.get('/api/ai/routine-conflicts'),
+    enabled: !!user && routines.length > 0,
+  });
+  const conflicts = conflictData?.conflicts || [];
 
   const toggleMutation = useMutation({
     mutationFn: async (stepId) => {
@@ -97,6 +105,33 @@ export default function Routine() {
             </div>
             <h3 className="font-cormorant font-semibold mb-2" style={{ fontSize: 24, color: '#1A1F1A' }}>No Routine Yet</h3>
             <p className="font-jost" style={{ fontSize: 14, color: '#5C6B5C' }}>Generate a personalized routine based on your skin profile.</p>
+          </AnimatedSection>
+        )}
+
+        {conflicts.length > 0 && (
+          <AnimatedSection className="mb-6">
+            <div style={{ background: '#FEF6F0', border: '1px solid #F0C9A8', borderRadius: 3, padding: 20 }}>
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-5 h-5" style={{ color: '#C97A40' }} />
+                <h3 className="font-cormorant font-semibold" style={{ fontSize: 18, color: '#8A4B1E' }}>
+                  Ingredient conflict{conflicts.length > 1 ? 's' : ''} detected
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {conflicts.map((c, i) => (
+                  <div key={i} style={{ borderLeft: '3px solid #C97A40', paddingLeft: 12 }}>
+                    <p className="font-jost font-semibold" style={{ fontSize: 13, color: '#1A1F1A' }}>
+                      {c.labels.join('  +  ')}
+                      <span style={{ marginLeft: 8, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: c.severity === 'high' ? '#C0392B' : c.severity === 'medium' ? '#C97A40' : '#9AAA9A' }}>
+                        {c.severity} risk
+                      </span>
+                    </p>
+                    <p className="font-jost" style={{ fontSize: 12, color: '#5C6B5C', marginTop: 2 }}>{c.reason}</p>
+                    <p className="font-jost" style={{ fontSize: 12, color: '#3D5A3E', marginTop: 2 }}>💡 {c.timing}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </AnimatedSection>
         )}
 

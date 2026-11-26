@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { format, startOfWeek } from 'date-fns';
 import PageTransition from '../components/shared/PageTransition';
 import AnimatedSection from '../components/shared/AnimatedSection';
-import { TrendingUp, BookOpen, Plus, Droplets } from 'lucide-react';
+import { TrendingUp, BookOpen, Plus, Droplets, Sparkles, FileText, Lightbulb, X, Loader2 } from 'lucide-react';
 
 function DashCard({ children, className = '' }) {
   return (
@@ -65,6 +65,28 @@ export default function Dashboard() {
     queryKey: ['wellnessLogs', user?.email],
     queryFn: () => api.get('/api/wellness'),
     enabled: !!user,
+  });
+
+  // Feature 3: AI-generated daily tip
+  const { data: aiTip } = useQuery({
+    queryKey: ['aiDailyTip', user?.email],
+    queryFn: () => api.get('/api/ai/daily-tip'),
+    enabled: !!user,
+  });
+
+  // Insights engine: per-user correlation analysis
+  const { data: insightsData } = useQuery({
+    queryKey: ['aiInsights', user?.email],
+    queryFn: () => api.get('/api/ai/insights'),
+    enabled: !!user,
+  });
+  const insights = insightsData?.insights || [];
+
+  // Feature 4: Weekly AI skin report (generated on demand)
+  const [report, setReport] = useState(null);
+  const reportMutation = useMutation({
+    mutationFn: () => api.post('/api/ai/weekly-report'),
+    onSuccess: (data) => setReport(data),
   });
 
   const waterMutation = useMutation({
@@ -165,11 +187,24 @@ export default function Dashboard() {
 
           <AnimatedSection delay={0.1}>
             <DashCard>
-              <p className="font-jost font-medium uppercase mb-3" style={labelStyle}>Daily Tip</p>
-              <h3 className="font-cormorant font-semibold mb-2" style={cardTitleStyle}>{dailyTip.title}</h3>
-              <p className="font-jost" style={{ fontSize: 14, color: '#5C6B5C', lineHeight: 1.7 }}>
-                {dailyTip.text}
-              </p>
+              <div className="flex items-center gap-2 mb-3">
+                {aiTip?.source === 'ai' && <Sparkles className="w-4 h-4" style={{ color: '#3D5A3E' }} />}
+                <p className="font-jost font-medium uppercase" style={labelStyle}>
+                  {aiTip?.source === 'ai' ? 'Your AI Daily Tip' : 'Daily Tip'}
+                </p>
+              </div>
+              {aiTip?.tip ? (
+                <p className="font-jost" style={{ fontSize: 15, color: '#1A1F1A', lineHeight: 1.7 }}>
+                  {aiTip.tip}
+                </p>
+              ) : (
+                <>
+                  <h3 className="font-cormorant font-semibold mb-2" style={cardTitleStyle}>{dailyTip.title}</h3>
+                  <p className="font-jost" style={{ fontSize: 14, color: '#5C6B5C', lineHeight: 1.7 }}>
+                    {dailyTip.text}
+                  </p>
+                </>
+              )}
             </DashCard>
           </AnimatedSection>
         </div>
@@ -289,7 +324,100 @@ export default function Dashboard() {
             </DashCard>
           </AnimatedSection>
         </div>
+
+        {/* AI Insights + Weekly Report */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+          <AnimatedSection delay={0.35}>
+            <DashCard>
+              <div className="flex items-center gap-2 mb-3">
+                <Lightbulb className="w-4 h-4" style={{ color: '#3D5A3E' }} />
+                <p className="font-jost font-medium uppercase" style={labelStyle}>Your Insights</p>
+              </div>
+              {insights.length > 0 ? (
+                <ul className="space-y-2.5">
+                  {insights.slice(0, 4).map((ins, i) => (
+                    <li key={i} className="font-jost flex gap-2" style={{ fontSize: 13, color: '#5C6B5C', lineHeight: 1.6 }}>
+                      <span style={{ color: '#3D5A3E' }}>•</span>
+                      <span>{ins.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="font-jost" style={{ fontSize: 14, color: '#9AAA9A', lineHeight: 1.7 }}>
+                  Keep logging your wellness and weekly check-ins — once you have a few weeks of data, personalized patterns will appear here (e.g. how your sleep affects your skin).
+                </p>
+              )}
+            </DashCard>
+          </AnimatedSection>
+
+          <AnimatedSection delay={0.4}>
+            <DashCard>
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-4 h-4" style={{ color: '#3D5A3E' }} />
+                <p className="font-jost font-medium uppercase" style={labelStyle}>Weekly AI Report</p>
+              </div>
+              <p className="font-jost mb-4" style={{ fontSize: 14, color: '#5C6B5C', lineHeight: 1.7 }}>
+                Generate an AI summary of your past 7 days — what improved, what declined, and tips for next week.
+              </p>
+              <button
+                onClick={() => reportMutation.mutate()}
+                disabled={reportMutation.isPending}
+                className="font-jost font-semibold tracking-[0.1em] uppercase text-xs text-white rounded-[3px] inline-flex items-center gap-2"
+                style={{ background: reportMutation.isPending ? '#6B8F6C' : '#3D5A3E', padding: '10px 20px' }}
+              >
+                {reportMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {reportMutation.isPending ? 'Generating...' : 'Generate Report'}
+              </button>
+            </DashCard>
+          </AnimatedSection>
+        </div>
       </div>
+
+      {/* Weekly report modal */}
+      {report && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.12)' }} onClick={() => setReport(null)}>
+          <motion.div
+            initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            style={{ background: '#fff', border: '1px solid #E2E8E2', borderRadius: 3, maxWidth: 560, width: '100%', padding: 32, maxHeight: '85vh', overflowY: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5" style={{ color: '#3D5A3E' }} />
+                <h2 className="font-cormorant font-semibold" style={{ fontSize: 24, color: '#1A1F1A' }}>Your Weekly Skin Report</h2>
+              </div>
+              <button onClick={() => setReport(null)}><X className="w-5 h-5" style={{ color: '#9AAA9A' }} /></button>
+            </div>
+            {report.summary && (
+              <p className="font-jost mb-5" style={{ fontSize: 14, color: '#5C6B5C', lineHeight: 1.7 }}>{report.summary}</p>
+            )}
+            {[
+              { title: 'What improved', items: report.improved, color: '#3D5A3E' },
+              { title: 'What declined', items: report.declined, color: '#C97A40' },
+              { title: 'Patterns noticed', items: report.patterns, color: '#5C6B5C' },
+              { title: 'Recommendations for next week', items: report.recommendations, color: '#3D5A3E' },
+            ].map((section) => (
+              Array.isArray(section.items) && section.items.length > 0 ? (
+                <div key={section.title} className="mb-4">
+                  <h4 className="font-jost font-semibold uppercase mb-2" style={{ fontSize: 11, color: section.color, letterSpacing: '0.1em' }}>{section.title}</h4>
+                  <ul className="space-y-1.5">
+                    {section.items.map((it, i) => (
+                      <li key={i} className="font-jost flex gap-2" style={{ fontSize: 13, color: '#1A1F1A', lineHeight: 1.6 }}>
+                        <span style={{ color: section.color }}>•</span><span>{it}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null
+            ))}
+            {report.source === 'fallback' && (
+              <p className="font-jost mt-2" style={{ fontSize: 11, color: '#9AAA9A' }}>
+                Tip: add your OpenRouter API key to enable the full AI-written report.
+              </p>
+            )}
+          </motion.div>
+        </div>
+      )}
     </PageTransition>
   );
 }

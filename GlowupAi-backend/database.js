@@ -175,6 +175,29 @@ const setupDatabase = () => {
     )
   `)
 
+  // SKIN ANALYSES TABLE
+  // One row per uploaded photo analysis (computer vision module, Feature 1).
+  // Per-dimension scores are stored both as individual columns (for trend
+  // queries) and as a full JSON blob (for the complete structured result).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS skin_analyses (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id         INTEGER NOT NULL,
+      overall_score   REAL,
+      acne            REAL,
+      redness         REAL,
+      dark_spots      REAL,
+      texture         REAL,
+      hydration       REAL,
+      mode            TEXT,
+      confidence      REAL,
+      face_detected   INTEGER DEFAULT 0,
+      result_json     TEXT,
+      created_at      TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `)
+
   // Insert default products if table is empty
   const productCount = db.prepare('SELECT COUNT(*) as count FROM products').get()
   if (productCount.count === 0) {

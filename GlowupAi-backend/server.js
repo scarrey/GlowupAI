@@ -45,6 +45,7 @@ app.use('/api/routine', require('./routes/routine'))
 app.use('/api/checklist', require('./routes/checklist'))
 app.use('/api/settings', require('./routes/settings'))
 app.use('/api/products', require('./routes/products'))
+app.use('/api/skin-analysis', require('./routes/skinAnalysis'))
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }))

@@ -6,11 +6,12 @@ import { motion } from 'framer-motion';
 
 import {
   LayoutDashboard, MessageCircle, CalendarCheck,
-  TrendingUp, BookOpen, Heart, Settings, LogOut,
+  TrendingUp, BookOpen, Heart, Settings, LogOut, ScanFace,
 } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard',        path: '/dashboard' },
+  { icon: ScanFace,        label: 'Skin Analysis',    path: '/skin-analysis' },
   { icon: MessageCircle,   label: 'Chat with Advisor',path: '/chat' },
   { icon: CalendarCheck,   label: 'My Routine',       path: '/routine' },
   { icon: TrendingUp,      label: 'Progress Tracker', path: '/progress' },

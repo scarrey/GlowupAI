@@ -17,6 +17,7 @@ import Settings from './pages/Settings'
 import ProgressTracker from './pages/ProgressTracker'
 import SkinDiary from './pages/SkinDiary'
 import WellnessTracker from './pages/WellnessTracker'
+import SkinAnalysis from './pages/SkinAnalysis'
 import AppLayout from './components/app/AppLayout'
 
 const AppRoutes = () => {
@@ -49,6 +50,7 @@ const AppRoutes = () => {
       }>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/skin-analysis" element={<SkinAnalysis />} />
         <Route path="/routine" element={<Routine />} />
         <Route path="/products" element={<Products />} />
         <Route path="/settings" element={<Settings />} />

@@ -1,5 +1,7 @@
 node_modules/
 .env
 glowup.db
+glowup.db-shm
+glowup.db-wal
 *.log
 .DS_Store

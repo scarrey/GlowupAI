@@ -6,15 +6,17 @@ import { motion } from 'framer-motion';
 import { format, startOfWeek } from 'date-fns';
 import PageTransition from '../components/shared/PageTransition';
 import AnimatedSection from '../components/shared/AnimatedSection';
-import { TrendingUp, BookOpen, Plus, Droplets, Sparkles, FileText, Lightbulb, X, Loader2 } from 'lucide-react';
+import { TrendingUp, BookOpen, Plus, Droplets, Sparkles, FileText, Lightbulb, X, Loader2, Compass } from 'lucide-react';
+import { startTour, maybeAutoStartTour } from '../lib/tour';
+import InfoTip from '../components/shared/InfoTip';
 
-function DashCard({ children, className = '' }) {
+function DashCard({ children, className = '', ...rest }) {
   return (
     <motion.div
-      className={`bg-white ${className}`}
-      style={{ border: '1px solid #E2E8E2', borderRadius: 3, padding: 24, boxShadow: '0 2px 16px rgba(61,90,62,0.08)' }}
-      whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(61,90,62,0.14)' }}
+      className={`glass-card ${className}`}
+      whileHover={{ y: -4 }}
       transition={{ duration: 0.25 }}
+      {...rest}
     >
       {children}
     </motion.div>
@@ -34,6 +36,11 @@ export default function Dashboard() {
     else if (h < 17) setGreeting('Good Afternoon');
     else setGreeting('Good Evening');
     api.get('/api/auth/me').then(setUser).catch(() => {});
+  }, []);
+
+  // Auto-start the guided tour on first visit
+  useEffect(() => {
+    maybeAutoStartTour();
   }, []);
 
   const { data: profiles = [] } = useQuery({
@@ -147,18 +154,29 @@ export default function Dashboard() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen p-6 md:p-8 lg:p-10" style={{ background: '#F7F7F5' }}>
-        <motion.div className="mb-8" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <p className="font-jost font-medium uppercase mb-1" style={labelStyle}>Your Skin</p>
-          <h1 className="font-cormorant font-semibold" style={{ fontSize: 34, color: '#1A1F1A' }}>
-            {greeting}, {firstName}
-          </h1>
-          <p className="font-jost" style={{ fontSize: 13, color: '#9AAA9A' }}>{dateStr}</p>
+      <div className="min-h-screen premium-bg p-6 md:p-8 lg:p-10">
+        <motion.div className="mb-8 flex items-start justify-between gap-4" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <div>
+            <p className="font-jost font-medium uppercase mb-1" style={labelStyle}>Your Skin</p>
+            <h1 className="font-cormorant font-semibold gradient-text" style={{ fontSize: 34 }}>
+              {greeting}, {firstName}
+            </h1>
+            <p className="font-jost" style={{ fontSize: 13, color: '#9AAA9A' }}>{dateStr}</p>
+          </div>
+          <button
+            onClick={() => startTour()}
+            className="font-jost font-medium inline-flex items-center gap-2 flex-shrink-0 transition-all"
+            style={{ padding: '8px 16px', borderRadius: 999, fontSize: 12, color: '#3D5A3E', background: 'rgba(255,255,255,0.7)', border: '1px solid #D6E2D6', backdropFilter: 'blur(8px)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#E8EFE8'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; }}
+          >
+            <Compass className="w-4 h-4" /> Take a tour
+          </button>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           <AnimatedSection delay={0.05}>
-            <DashCard>
+            <DashCard data-tour="profile-card">
               <p className="font-jost font-medium uppercase mb-3" style={labelStyle}>Skin Profile</p>
               {profile ? (
                 <>
@@ -186,7 +204,7 @@ export default function Dashboard() {
           </AnimatedSection>
 
           <AnimatedSection delay={0.1}>
-            <DashCard>
+            <DashCard data-tour="daily-tip">
               <div className="flex items-center gap-2 mb-3">
                 {aiTip?.source === 'ai' && <Sparkles className="w-4 h-4" style={{ color: '#3D5A3E' }} />}
                 <p className="font-jost font-medium uppercase" style={labelStyle}>
@@ -240,6 +258,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-4 h-4" style={{ color: '#3D5A3E' }} />
                 <p className="font-jost font-medium uppercase" style={labelStyle}>Glow Check-In</p>
+                <InfoTip text="Rate six skin dimensions weekly (acne, hydration, glow, redness, texture, dark spots) to track your progress over time." />
               </div>
               {thisWeekCheck ? (
                 <>
@@ -291,7 +310,7 @@ export default function Dashboard() {
           </AnimatedSection>
 
           <AnimatedSection delay={0.3}>
-            <DashCard>
+            <DashCard data-tour="wellness">
               <div className="flex items-center gap-2 mb-4">
                 <Droplets className="w-4 h-4" style={{ color: '#3D5A3E' }} />
                 <p className="font-jost font-medium uppercase" style={labelStyle}>Today's Wellness</p>
@@ -328,10 +347,11 @@ export default function Dashboard() {
         {/* AI Insights + Weekly Report */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
           <AnimatedSection delay={0.35}>
-            <DashCard>
+            <DashCard data-tour="insights">
               <div className="flex items-center gap-2 mb-3">
                 <Lightbulb className="w-4 h-4" style={{ color: '#3D5A3E' }} />
                 <p className="font-jost font-medium uppercase" style={labelStyle}>Your Insights</p>
+                <InfoTip text="We analyze correlations in your own tracked data — like how sleep and water affect your skin scores — to surface personalized patterns." />
               </div>
               {insights.length > 0 ? (
                 <ul className="space-y-2.5">
@@ -351,10 +371,11 @@ export default function Dashboard() {
           </AnimatedSection>
 
           <AnimatedSection delay={0.4}>
-            <DashCard>
+            <DashCard data-tour="weekly-report">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-4 h-4" style={{ color: '#3D5A3E' }} />
                 <p className="font-jost font-medium uppercase" style={labelStyle}>Weekly AI Report</p>
+                <InfoTip text="Generates an AI summary of your last 7 days: what improved, what declined, patterns, and specific tips for next week." />
               </div>
               <p className="font-jost mb-4" style={{ fontSize: 14, color: '#5C6B5C', lineHeight: 1.7 }}>
                 Generate an AI summary of your past 7 days — what improved, what declined, and tips for next week.

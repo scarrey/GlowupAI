@@ -66,6 +66,7 @@ export default function AppSidebar() {
               <div key={item.path} className="relative">
                 <Link
                   to={item.path}
+                  data-tour={`nav-${item.path.replace('/', '')}`}
                   className="flex items-center gap-3 px-3 py-2.5 transition-all duration-150 group relative"
                   style={{
                     borderRadius: 3,

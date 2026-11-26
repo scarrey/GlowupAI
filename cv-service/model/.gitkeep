@@ -1,0 +1,2 @@
+Place trained skin_model.h5 here. The CV service auto-loads it if present;
+otherwise it runs the OpenCV heuristic analyzer.

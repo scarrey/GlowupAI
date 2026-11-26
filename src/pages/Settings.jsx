@@ -21,7 +21,7 @@ export default function Settings() {
     onSuccess: () => api.get('/api/auth/me').then(setUser),
   });
 
-  const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 3, boxShadow: '0 2px 16px rgba(61,90,62,0.08)', padding: 32, marginBottom: 16 };
+  const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 18, boxShadow: '0 10px 30px -14px rgba(61,90,62,0.16)', padding: 32, marginBottom: 16 };
   const inputStyle = {
     width: '100%', border: '1px solid #E2E8E2', borderRadius: 3,
     padding: '12px 16px', fontFamily: 'var(--font-jost)', fontSize: 14,

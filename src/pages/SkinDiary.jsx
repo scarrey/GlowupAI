@@ -65,7 +65,7 @@ export default function SkinDiary() {
     return entries.find((e) => e.entry_date === dateStr);
   };
 
-  const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 3, boxShadow: '0 2px 16px rgba(61,90,62,0.08)' };
+  const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 18, boxShadow: '0 10px 30px -14px rgba(61,90,62,0.16)' };
   const inputStyle = {
     width: '100%', border: '1px solid #E2E8E2', borderRadius: 3,
     padding: '12px 16px', fontFamily: 'var(--font-jost)', fontSize: 14,
@@ -75,7 +75,7 @@ export default function SkinDiary() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen p-6 md:p-8 lg:p-10" style={{ background: '#F7F7F5' }}>
+      <div className="min-h-screen premium-bg p-6 md:p-8 lg:p-10">
         <AnimatedSection>
           <p className="font-jost font-medium uppercase mb-1" style={labelStyle}>Daily Habits</p>
           <h1 className="font-cormorant font-semibold mb-8" style={{ fontSize: 40, color: '#1A1F1A', lineHeight: 1.2 }}>

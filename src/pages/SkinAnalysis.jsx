@@ -7,7 +7,7 @@ import PageTransition from '../components/shared/PageTransition';
 import AnimatedSection from '../components/shared/AnimatedSection';
 
 const labelStyle = { fontSize: 11, letterSpacing: '0.18em', color: '#9AAA9A', fontFamily: 'var(--font-jost)', fontWeight: 500 };
-const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 3, boxShadow: '0 2px 16px rgba(61,90,62,0.08)', padding: 28 };
+const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 18, boxShadow: '0 10px 30px -14px rgba(61,90,62,0.16)', padding: 28 };
 
 const DIM_LABELS = {
   acne: 'Acne', redness: 'Redness', dark_spots: 'Dark Spots', texture: 'Texture', hydration: 'Hydration',
@@ -64,7 +64,7 @@ export default function SkinAnalysis() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen p-6 md:p-8 lg:p-10" style={{ background: '#F7F7F5' }}>
+      <div className="min-h-screen premium-bg p-6 md:p-8 lg:p-10">
         <AnimatedSection>
           <p className="font-jost font-medium uppercase mb-1" style={labelStyle}>AI Skin Analysis</p>
           <h1 className="font-cormorant font-semibold mb-2" style={{ fontSize: 40, color: '#1A1F1A', lineHeight: 1.2 }}>Photo Skin Analysis</h1>

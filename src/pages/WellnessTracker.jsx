@@ -72,13 +72,13 @@ export default function WellnessTracker() {
     return s;
   })();
 
-  const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 3, boxShadow: '0 2px 16px rgba(61,90,62,0.08)', padding: 32 };
+  const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 18, boxShadow: '0 10px 30px -14px rgba(61,90,62,0.16)', padding: 32 };
   const labelStyle = { fontSize: 11, letterSpacing: '0.18em', color: '#9AAA9A', fontFamily: 'var(--font-jost)', fontWeight: 500 };
   const sliderPct = (sleepHours / 12) * 100;
 
   return (
     <PageTransition>
-      <div className="min-h-screen p-6 md:p-8 lg:p-10" style={{ background: '#F7F7F5' }}>
+      <div className="min-h-screen premium-bg p-6 md:p-8 lg:p-10">
         <AnimatedSection>
           <p className="font-jost font-medium uppercase mb-1" style={labelStyle}>Daily Habits</p>
           <h1 className="font-cormorant font-semibold mb-8" style={{ fontSize: 40, color: '#1A1F1A', lineHeight: 1.2 }}>
@@ -202,7 +202,7 @@ export default function WellnessTracker() {
 
         {/* Charts */}
         <AnimatedSection delay={0.2} className="mb-4">
-          <div style={{ background: '#fff', border: '1px solid #E2E8E2', borderRadius: 3, boxShadow: '0 2px 16px rgba(61,90,62,0.08)' }}>
+          <div style={{ background: '#fff', border: '1px solid #E2E8E2', borderRadius: 18, boxShadow: '0 10px 30px -14px rgba(61,90,62,0.16)' }}>
             <div style={{ padding: '24px 24px 0' }}>
               <p className="font-jost font-medium uppercase mb-1" style={labelStyle}>7-Day Overview</p>
             </div>

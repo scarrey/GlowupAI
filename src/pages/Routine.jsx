@@ -72,12 +72,12 @@ export default function Routine() {
   const amRoutine = routines.find((r) => r.routine_type === 'am');
   const pmRoutine = routines.find((r) => r.routine_type === 'pm');
 
-  const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 3, boxShadow: '0 2px 16px rgba(61,90,62,0.08)', padding: 32 };
+  const cardStyle = { background: '#fff', border: '1px solid #E2E8E2', borderRadius: 18, boxShadow: '0 10px 30px -14px rgba(61,90,62,0.16)', padding: 32 };
   const labelStyle = { fontSize: 11, letterSpacing: '0.18em', color: '#9AAA9A', fontFamily: 'var(--font-jost)', fontWeight: 500 };
 
   return (
     <PageTransition>
-      <div className="min-h-screen p-6 md:p-8 lg:p-10" style={{ background: '#F7F7F5' }}>
+      <div className="min-h-screen premium-bg p-6 md:p-8 lg:p-10">
         <AnimatedSection>
           <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-8 gap-4">
             <div>

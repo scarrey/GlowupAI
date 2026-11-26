@@ -2,26 +2,12 @@ const express = require('express')
 const router = express.Router()
 const db = require('../database')
 const auth = require('../middleware/auth')
+const { callAI, parseAIJson, getUserData, buildContextString } = require('../services/ai')
+const { retrieveContext, SAFETY_ESCALATION_NOTE, needsEscalation } = require('../services/rag')
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
-const MODEL = process.env.AI_MODEL || 'google/gemini-2.0-flash-lite-001'
-
-const callAI = async (messages) => {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-    }),
-  })
-  const data = await response.json()
-  if (!data.choices || !data.choices[0]) throw new Error(data.error?.message || 'AI request failed')
-  return data.choices[0].message.content
-}
+// How many of the most recent messages to replay to the model so the
+// conversation has real multi-turn memory (Feature 2 in the proposal).
+const HISTORY_LIMIT = 14
 
 // GET all chat sessions for current user
 router.get('/sessions', auth, (req, res) => {
@@ -111,72 +97,90 @@ router.put('/sessions/:sessionId', auth, (req, res) => {
   res.json({ success: true })
 })
 
-// AI RESPONSE — generates an AI reply using the user's full data as context
+// Fetch the last N messages of a session as model-ready {role, content} pairs.
+// chat_messages stores role as 'user' | 'ai'; the LLM API expects
+// 'user' | 'assistant'.
+const getConversationHistory = (sessionId, userId) => {
+  const session = db.prepare(
+    'SELECT id FROM chat_sessions WHERE id = ? AND user_id = ?'
+  ).get(sessionId, userId)
+  if (!session) return []
+
+  const rows = db.prepare(`
+    SELECT role, message_text FROM chat_messages
+    WHERE session_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT ?
+  `).all(sessionId, HISTORY_LIMIT)
+
+  // rows are newest-first; reverse to chronological order
+  return rows.reverse().map((m) => ({
+    role: m.role === 'ai' ? 'assistant' : 'user',
+    content: m.message_text,
+  }))
+}
+
+// AI RESPONSE — generates an AI reply using the user's full data as context,
+// retrieval-augmented knowledge, and real multi-turn conversation memory.
 router.post('/ai-response', auth, async (req, res) => {
   try {
-    const { message, skin_context } = req.body
+    const { message, skin_context, session_id } = req.body
 
     if (!message) return res.status(400).json({ error: 'message is required' })
 
-    // Fetch user's skin profile for richer context
-    const profile = db.prepare(
-      'SELECT * FROM skin_profiles WHERE user_id = ?'
-    ).get(req.user.id)
+    // Personalization context from the user's tracked data
+    const data = getUserData(req.user.id)
+    let systemPrompt =
+      'You are Glow-Up Advisor, a friendly and knowledgeable AI skincare companion. ' +
+      'Give personalized, practical advice. Keep responses concise but helpful. Use emojis sparingly.'
 
-    // Fetch recent wellness logs
-    const wellnessLogs = db.prepare(
-      "SELECT * FROM wellness_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 7"
-    ).all(req.user.id)
-
-    // Fetch recent diary entries
-    const diaryEntries = db.prepare(
-      "SELECT * FROM skin_diary WHERE user_id = ? ORDER BY entry_date DESC LIMIT 5"
-    ).all(req.user.id)
-
-    // Fetch routines
-    const routines = db.prepare(
-      'SELECT * FROM routines WHERE user_id = ?'
-    ).all(req.user.id)
-
-    let systemPrompt = 'You are Glow-Up Advisor, a friendly and knowledgeable AI skincare companion. Give personalized, practical advice. Keep responses concise but helpful. Use emojis sparingly.'
-
-    if (profile) {
-      const concerns = profile.skin_concerns ? JSON.parse(profile.skin_concerns).join(', ') : 'none'
-      systemPrompt += `\n\nUser's skin profile:\n- Skin type: ${profile.skin_type || 'unknown'}\n- Concerns: ${concerns}\n- Water intake: ${profile.water_intake || 'unknown'}\n- Sleep hours: ${profile.sleep_hours || 'unknown'}\n- Diet: ${profile.diet_type || 'unknown'}\n- Beauty goal: ${profile.beauty_goal || 'unknown'}\n- Onboarding complete: ${profile.onboarding_complete ? 'yes' : 'no'}`
-      systemPrompt += `\n\nIMPORTANT: Always reference the user's specific skin type, concerns, and goals in your response. For example, say "Since you have ${profile.skin_type || 'unknown'} skin..." or "Given your concern about ${concerns}..." — make it clear your advice is personalized for them, not generic.`
+    const ctx = buildContextString(data)
+    if (ctx) {
+      systemPrompt += `\n${ctx}`
+      systemPrompt +=
+        '\n\nIMPORTANT: Reference the user\'s specific skin type, concerns and goals so the advice is clearly personalized, not generic.'
     }
 
-    if (wellnessLogs.length > 0) {
-      const latest = wellnessLogs[0]
-      const avgWater = (wellnessLogs.reduce((a, l) => a + (l.water_glasses || 0), 0) / wellnessLogs.length).toFixed(1)
-      const avgSleep = (wellnessLogs.reduce((a, l) => a + (l.sleep_hours || 0), 0) / wellnessLogs.length).toFixed(1)
-      systemPrompt += `\n\nUser's wellness data (last 7 days):\n- Average water: ${avgWater} glasses/day (latest: ${latest.water_glasses})\n- Average sleep: ${avgSleep} hrs/night (latest: ${latest.sleep_hours}, quality: ${latest.sleep_quality})\nReference this when giving lifestyle advice.`
+    // --- Retrieval-Augmented Generation (Feature: RAG) ---
+    // Pull grounded dermatological knowledge relevant to the question and
+    // inject it so the model answers from verified information, with citations.
+    const retrieved = retrieveContext(message)
+    if (retrieved.context) {
+      systemPrompt +=
+        `\n\nUse ONLY the following verified knowledge to answer skincare-science questions. ` +
+        `Cite the source in square brackets like [${retrieved.chunks[0].source}] when you use a fact.\n\n` +
+        `===== VERIFIED KNOWLEDGE BASE =====\n${retrieved.context}\n===== END KNOWLEDGE BASE =====`
     }
 
-    if (diaryEntries.length > 0) {
-      const latestDiary = diaryEntries[0]
-      systemPrompt += `\n\nLatest skin diary (${latestDiary.entry_date}): Mood: ${latestDiary.mood}. Notes: ${latestDiary.skin_notes || 'none'}. Lifestyle: ${latestDiary.lifestyle_notes || 'none'}\nUse this to understand how their skin has been recently.`
-    }
-
-    if (routines.length > 0) {
-      const routineSummary = routines.map(r => {
-        const steps = JSON.parse(r.steps || '[]')
-        const stepNames = steps.map(s => s.product_name || s.name || s.product_type || 'step').join(', ')
-        return `${r.routine_type.toUpperCase()}: ${stepNames}`
-      }).join(' | ')
-      systemPrompt += `\n\nUser's current routine: ${routineSummary}\nReference their existing products when suggesting changes.`
+    // --- Safety escalation layer ---
+    // If the message suggests something beyond cosmetic guidance, instruct the
+    // model to recommend seeing a dermatologist.
+    if (needsEscalation(message)) {
+      systemPrompt += `\n\n${SAFETY_ESCALATION_NOTE}`
     }
 
     if (skin_context) {
       systemPrompt += `\n\nAdditional context: ${skin_context}`
     }
 
+    // --- Multi-turn memory (Feature 2) ---
+    // The frontend saves the user's message before calling this endpoint, so
+    // the history already ends with the current message when session_id is sent.
+    let history = session_id ? getConversationHistory(session_id, req.user.id) : []
+    const lastUser = [...history].reverse().find((m) => m.role === 'user')
+    if (!lastUser || lastUser.content !== message) {
+      history = [...history, { role: 'user', content: message }]
+    }
+
     const aiMessage = await callAI([
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: message },
+      ...history,
     ])
 
-    res.json({ message: aiMessage })
+    res.json({
+      message: aiMessage,
+      sources: retrieved.chunks.map((c) => c.source),
+    })
   } catch (error) {
     console.error('AI response error:', error.message)
     res.status(500).json({ error: 'Failed to generate AI response' })
@@ -222,13 +226,7 @@ Be specific to the user's skin type and concerns.`
       { role: 'user', content: prompt },
     ])
 
-    // Parse the AI response — strip markdown fences if present
-    let cleaned = aiMessage.trim()
-    if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
-    }
-
-    const routine = JSON.parse(cleaned)
+    const routine = parseAIJson(aiMessage)
     res.json(routine)
   } catch (error) {
     console.error('Generate routine error:', error.message)

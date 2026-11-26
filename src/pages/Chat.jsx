@@ -238,7 +238,8 @@ export default function Chat() {
 
       const response = await api.post('/api/chat/ai-response', {
         message: text,
-        skin_context: skinContext
+        skin_context: skinContext,
+        session_id: targetSessionId,
       });
 
       await api.post(`/api/chat/sessions/${targetSessionId}/messages`, { role: 'ai', message_text: response.message });
